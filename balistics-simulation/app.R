@@ -68,28 +68,59 @@ ui <- fluidPage(
                   )
                ),
                column(width = 5,
-               wellPanel(
-                   h4("Chart Configurations"),
-               fluidRow(
-                   column(width = 6,
-                       checkboxInput("lockMaxX", "Lock X", value = FALSE),
-                       conditionalPanel(
-                            condition = "input.lockMaxX == true",
-                            numericInput("maxX", "X axis", 11, min = 10))
-                       ),
-                   column(width = 6,
-                       checkboxInput("lockMaxY", "Lock Y", value = FALSE),
-                       conditionalPanel(
-                            condition = "input.lockMaxY == true",
-                            numericInput("maxY", "Y axis", 3, min = 10))
-                        )
-               )))
+                   wellPanel(
+                       h4("Chart Configurations"),
+                       fluidRow(
+                           column(width = 6,
+                               checkboxInput("lockMaxX", "Lock X", value = FALSE),
+                               conditionalPanel(
+                                    condition = "input.lockMaxX == true",
+                                    numericInput("maxX", "X axis", 11, min = 10))
+                            ),
+                           column(width = 6,
+                               checkboxInput("lockMaxY", "Lock Y", value = FALSE),
+                               conditionalPanel(
+                                    condition = "input.lockMaxY == true",
+                                    numericInput("maxY", "Y axis", 3, min = 10))
+                            )
+                       )
+                   )
+               )
         )
     )
 )
 
 # Define server logic required to draw a histogram
-server <- function(input, output) {
+server <- function(input, output, session) {
+
+    observe({
+        dragParameter = quadraticDragParameter(input$fluidDensity, input$projectileDiameter)
+        trajectoryWithDrag = computeTrajectoryWithDrag(dragParameter, input$projectileMass, input$initVelocity, input$launchAngle, input$launchHeight, 0.01)
+        trajectory = computeTrajectoryWithDrag(0, input$projectileMass, input$initVelocity, input$launchAngle, input$launchHeight, 0.03)
+        
+        xLockMax = round(getLims(trajectory$x, trajectoryWithDrag$x, FALSE)[2], 1)
+        yLockMax = round(getLims(trajectory$y, trajectoryWithDrag$y, FALSE)[2], 1)
+        
+        updateNumericInput(session, "maxX", value = xLockMax)
+        updateNumericInput(session, "maxY", value = yLockMax)
+        
+        output$maxDistance <- function(){return(paste(round(max(trajectory$x), 1), "m"))}
+        output$maxHeight <- function(){return(paste(round(max(trajectory$y), 1), "m"))}
+        
+        output$maxDistanceDrag <- function(){return(paste(round(max(trajectoryWithDrag$x), 1), "m"))}
+        output$maxHeightDrag <- function(){return(paste(round(max(trajectoryWithDrag$y), 1), "m"))}
+        
+        output$trajectoryPlot <- renderPlot({
+            xlimits = getLims(trajectory$x, trajectoryWithDrag$x, input$lockMaxX, input$maxX)
+            ylimits = getLims(trajectory$y, trajectoryWithDrag$y, input$lockMaxY, input$maxY)
+            
+            plot(c(-1, -1), xlim = xlimits, ylim = ylimits, xlab = "x", ylab = "y", main = "Flight trajectory of a projectile with and without drag")
+            lines(trajectoryWithDrag$x, trajectoryWithDrag$y, col = 'blue', lwd = 4)
+            lines(trajectory$x, trajectory$y, col = 'red', lwd = 4)
+            legend("topright", legend=c("vacuum", "drag"),
+                   col=c("red", "blue"), lty=1:1, cex=0.8, lwd = 4)
+        })
+    })
 
     quadraticDragParameter <- function(fluidDensity, diameter){
         return(pi / 16 * fluidDensity * diameter ^ 2)
@@ -186,26 +217,6 @@ server <- function(input, output) {
 
         return(c(0, max))
     }
-    
-    output$trajectoryPlot <- renderPlot({
-        dragParameter = quadraticDragParameter(input$fluidDensity, input$projectileDiameter)
-        trajectoryWithDrag = computeTrajectoryWithDrag(dragParameter, input$projectileMass, input$initVelocity, input$launchAngle, input$launchHeight, 0.01)
-        trajectory = computeTrajectoryWithDrag(0, input$projectileMass, input$initVelocity, input$launchAngle, input$launchHeight, 0.03)
-        
-        output$maxDistance <- function(){return(paste(round(max(trajectory$x), 1), "m"))}
-        output$maxHeight <- function(){return(paste(round(max(trajectory$y), 1), "m"))}
-        
-        output$maxDistanceDrag <- function(){return(paste(round(max(trajectoryWithDrag$x), 1), "m"))}
-        output$maxHeightDrag <- function(){return(paste(round(max(trajectoryWithDrag$y), 1), "m"))}
-
-        xlimits = getLims(trajectory$x, trajectoryWithDrag$x, input$lockMaxX, input$maxX)
-        ylimits = getLims(trajectory$y, trajectoryWithDrag$y, input$lockMaxY, input$maxY)
-        plot(c(-1, -1), xlim = xlimits, ylim = ylimits, xlab = "x", ylab = "y", main = "Flight trajectory of a projectile with and without drag")
-        lines(trajectoryWithDrag$x, trajectoryWithDrag$y, col = 'blue', lwd = 4)
-        lines(trajectory$x, trajectory$y, col = 'red', lwd = 4)
-        legend("topright", legend=c("vacuum", "drag"),
-               col=c("red", "blue"), lty=1:1, cex=0.8, lwd = 4)
-    })
     
     output$fluidDensityInfo <- function(){
         return("Default set to air density: 1.225 kg/m^3")
