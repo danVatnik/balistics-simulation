@@ -94,6 +94,15 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
     observe({
+        if(is.na(input$projectileMass) | 
+           is.na(input$projectileDiameter) |
+           is.na(input$initVelocity) | 
+           is.na(input$launchHeight) |
+           is.na(input$fluidDensity)
+           ){
+            return()
+        }
+        
         dragParameter = quadraticDragParameter(input$fluidDensity, input$projectileDiameter)
         trajectoryWithDrag = computeTrajectoryWithDrag(dragParameter, input$projectileMass, input$initVelocity, input$launchAngle, input$launchHeight, 0.01)
         trajectory = computeTrajectoryWithDrag(0, input$projectileMass, input$initVelocity, input$launchAngle, input$launchHeight, 0.03)
