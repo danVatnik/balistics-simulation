@@ -75,13 +75,13 @@ ui <- fluidPage(
                                checkboxInput("lockMaxX", "Lock X", value = FALSE),
                                conditionalPanel(
                                     condition = "input.lockMaxX == true",
-                                    numericInput("maxX", "X axis", 11, min = 10))
+                                    numericInput("maxX", "X axis", NA, min = 10))
                             ),
                            column(width = 6,
                                checkboxInput("lockMaxY", "Lock Y", value = FALSE),
                                conditionalPanel(
                                     condition = "input.lockMaxY == true",
-                                    numericInput("maxY", "Y axis", 3, min = 10))
+                                    numericInput("maxY", "Y axis", NA, min = 10))
                             )
                        )
                    )
@@ -107,11 +107,21 @@ server <- function(input, output, session) {
         trajectoryWithDrag = computeTrajectoryWithDrag(dragParameter, input$projectileMass, input$initVelocity, input$launchAngle, input$launchHeight, 0.01)
         trajectory = computeTrajectoryWithDrag(0, input$projectileMass, input$initVelocity, input$launchAngle, input$launchHeight, 0.03)
         
-        xLockMax = round(getLims(trajectory$x, trajectoryWithDrag$x, FALSE)[2], 1)
-        yLockMax = round(getLims(trajectory$y, trajectoryWithDrag$y, FALSE)[2], 1)
+        xLockMax = round(getLims(trajectory$x, trajectoryWithDrag$x, FALSE, NA)[2], 1)
+        yLockMax = round(getLims(trajectory$y, trajectoryWithDrag$y, FALSE, NA)[2], 1)
         
-        updateNumericInput(session, "maxX", value = xLockMax)
-        updateNumericInput(session, "maxY", value = yLockMax)
+        if(is.na(input$maxX) & input$lockMaxX){
+            updateNumericInput(session, "maxX", value = xLockMax) 
+        }
+        if(!input$lockMaxX){
+            updateNumericInput(session, "maxX", value = NA) 
+        }
+        if(is.na(input$maxY) & input$lockMaxY){
+            updateNumericInput(session, "maxY", value = yLockMax)
+        }
+        if(!input$lockMaxY){
+            updateNumericInput(session, "maxY", value = NA)
+        }
         
         output$maxDistance <- function(){return(paste(round(max(trajectory$x), 1), "m"))}
         output$maxHeight <- function(){return(paste(round(max(trajectory$y), 1), "m"))}
@@ -124,8 +134,8 @@ server <- function(input, output, session) {
             ylimits = getLims(trajectory$y, trajectoryWithDrag$y, input$lockMaxY, input$maxY)
             
             plot(c(-1, -1), xlim = xlimits, ylim = ylimits, xlab = "x", ylab = "y", main = "Flight trajectory of a projectile with and without drag")
-            lines(trajectoryWithDrag$x, trajectoryWithDrag$y, col = 'blue', lwd = 4)
             lines(trajectory$x, trajectory$y, col = 'red', lwd = 4)
+            lines(trajectoryWithDrag$x, trajectoryWithDrag$y, col = 'blue', lwd = 4)
             legend("topright", legend=c("vacuum", "drag"),
                    col=c("red", "blue"), lty=1:1, cex=0.8, lwd = 4)
         })
@@ -136,6 +146,10 @@ server <- function(input, output, session) {
     }
     
     dragForce <- function(velocity, dragParameter, mass){
+        if(velocity == 0){
+            return(0)
+        }
+        
         velocityUnitVetcor = velocity / abs(velocity)
         
         dragForce = -1 * dragParameter * velocity ^ 2  * velocityUnitVetcor
@@ -190,7 +204,7 @@ server <- function(input, output, session) {
             currentPosition$x = position(currentPosition$x, xVelocity, timeStep)
             currentPosition$y = position(currentPosition$y, yVelocity, timeStep)
             trajectory = rbind(trajectory, c(currentPosition$x, currentPosition$y))
-            
+
             if(currentPosition$y <= 0){
                 
                 landingSpeed = sqrt(xVelocity * xVelocity + yVelocity * yVelocity)
@@ -210,7 +224,7 @@ server <- function(input, output, session) {
             xVelocity = velocity(xVelocity, xAcceleration, timeStep)
             yVelocity = velocity(yVelocity, yAcceleration, timeStep)
         }
-        
+
         return(trajectory)
     }
     
@@ -218,7 +232,7 @@ server <- function(input, output, session) {
         x1Max = max(x1)
         x2Max = min(x2)
         
-        if(lockMax){
+        if(lockMax & !is.na(lockMaxValue)){
             max = lockMaxValue
         }else{
             max = max(c(x1Max, x2Max)) 
