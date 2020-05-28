@@ -5,8 +5,8 @@ account: danvatnik
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2362343
-bundleId: 3193978
+bundleId: 3198205
 url: https://danvatnik.shinyapps.io/balistics-simulation/
-when: 1590560148.54022
+when: 1590628430.60907
 asMultiple: FALSE
 asStatic: FALSE

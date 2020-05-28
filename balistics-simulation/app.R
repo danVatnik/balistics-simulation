@@ -94,7 +94,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
     observe({
-        if(is.na(input$projectileMass) | 
+        if(is.na(input$projectileMass) | input$projectileMass <= 0 | 
            is.na(input$projectileDiameter) |
            is.na(input$initVelocity) | 
            is.na(input$launchHeight) |
